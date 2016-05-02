@@ -75,5 +75,36 @@ export default {
         var messageBytes = new WhisperProtos.PreKeyWhisperMessage(message).encode().toArrayBuffer();
         var versionField = getVersionField(preKeyWhisperMessage.version);
         return ArrayBufferUtils.concat(versionField, messageBytes);
+    },
+    decodeSenderKeyMessage: (senderKeyMessageBytes) => {
+        var pbMessageBytes = senderKeyMessageBytes.slice(1, -ProtocolConstants.signatureByteCount);
+        var message = WhisperProtos.SenderKeyMessage.decode(pbMessageBytes);
+        toArrayBuffer(message, "ciphertext");
+        return {
+            version: extractMessageVersion(senderKeyMessageBytes.slice(0, 1)),
+            message: message,
+            signature: senderKeyMessageBytes.slice(-ProtocolConstants.signatureByteCount)
+        };
+    },
+    encodeSenderKeyMessage: (senderKeyMessage) => {
+        var message = senderKeyMessage.message;
+        var messageBytes = new WhisperProtos.SenderKeyMessage(message).encode().toArrayBuffer();
+        var versionField = getVersionField(senderKeyMessage.version);
+        return ArrayBufferUtils.concat(versionField, messageBytes);
+    },
+    decodeSenderKeyDistributionMessage: (senderKeyDistributionMessageBytes) => {
+        var message = WhisperProtos.SenderKeyDistributionMessage.decode(senderKeyDistributionMessageBytes.slice(1));
+        toArrayBuffer(message, "chainKey");
+        toArrayBuffer(message, "signingKey");
+        return {
+            version: extractMessageVersion(senderKeyDistributionMessageBytes.slice(0, 1)),
+            message: message
+        };
+    },
+    encodeSenderKeyDistributionMessage: (senderKeyDistributionMessage) => {
+        var message = senderKeyDistributionMessage.message;
+        var messageBytes = new WhisperProtos.SenderKeyDistributionMessage(message).encode().toArrayBuffer();
+        var versionField = getVersionField(senderKeyDistributionMessage.version);
+        return ArrayBufferUtils.concat(versionField, messageBytes);
     }
 };
