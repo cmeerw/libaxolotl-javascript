@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015 Joe Bandenburg
+ * Copyright (C) 2016 Christof Meerwald
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -15,24 +15,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-// TODO: Consider exporting these individually
-
-export default {
-    currentVersion: 3,
-
-    // Sizes of various fields
-    macByteCount: 8,
-    cipherKeyByteCount: 32,
-    macKeyByteCount: 32,
-    ivByteCount: 16,
-    dhKeyByteCount: 32,
-    rootKeyByteCount: 32,
-    chainKeyByteCount: 32,
-    signatureByteCount: 64,
-
-    // Client parameters
-    // TODO: Make these configurable?
-    maximumRetainedReceivedChainKeys: 5,
-    maximumMissedMessages: 2000,
-    maximumSessionStatesPerIdentity: 40
-};
+/**
+ * A chain holds the state of the sub ratchet, used for sending multiple messages before receiving a reply.
+ */
+export default class SenderKeyChain {
+    /**
+     *
+     * @param {ArrayBuffer} key
+     */
+    constructor(key, index) {
+        this.key = key;
+        this.index = index;
+        this.messageKeys = [];
+        Object.seal(this);
+    }
+}

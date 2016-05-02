@@ -17,6 +17,8 @@
 
 import SessionFactory from "./SessionFactory";
 import SessionCipher from "./SessionCipher";
+import GroupSessionFactory from "./GroupSessionFactory";
+import GroupCipher from "./GroupCipher";
 import {InvalidMessageException} from "./Exceptions";
 import Store from "./Store";
 import Crypto from "./Crypto";
@@ -93,6 +95,9 @@ function Axolotl(crypto, store) {
 
     var sessionFactory = new SessionFactory(wrappedCrypto, wrappedStore);
     var sessionCipher = new SessionCipher(wrappedCrypto);
+
+    var groupSessionFactory = new GroupSessionFactory(wrappedCrypto, wrappedStore);
+    var groupCipher = new GroupCipher(wrappedCrypto);
 
     /**
      * Generate an identity key pair. Clients should only do this once, at install time.
@@ -248,6 +253,10 @@ function Axolotl(crypto, store) {
             registrationId: registrationId
         };
     });
+
+    this.decryptSenderKeyMessage = groupCipher.decryptSenderKeyMessage;
+
+    this.processSenderKeyDistributionMessage = groupSessionFactory.processSenderKeyDistributionMessage;
 
     Object.freeze(self);
 }
