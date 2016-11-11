@@ -96,7 +96,7 @@ function Axolotl(crypto, store) {
     var sessionFactory = new SessionFactory(wrappedCrypto, wrappedStore);
     var sessionCipher = new SessionCipher(wrappedCrypto);
 
-    var groupSessionFactory = new GroupSessionFactory(wrappedCrypto, wrappedStore);
+    var groupSessionFactory = new GroupSessionFactory(wrappedCrypto);
     var groupCipher = new GroupCipher(wrappedCrypto);
 
     /**
@@ -254,9 +254,15 @@ function Axolotl(crypto, store) {
         };
     });
 
+    this.encryptSenderKeyMessage = groupCipher.encryptSenderKeyMessage;
+
     this.decryptSenderKeyMessage = groupCipher.decryptSenderKeyMessage;
 
     this.processSenderKeyDistributionMessage = groupSessionFactory.processSenderKeyDistributionMessage;
+
+    this.createGroupState = groupSessionFactory.createState;
+
+    this.createSenderKeyDistributionMessage = groupSessionFactory.createSenderKeyDistributionMessage;
 
     Object.freeze(self);
 }

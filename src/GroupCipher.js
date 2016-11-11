@@ -24,10 +24,40 @@ import GroupRatchet from "./GroupRatchet";
 import {DuplicateMessageException, InvalidMessageException, UnsupportedProtocolVersionException} from "./Exceptions";
 import co from "co";
 
-function GroupCipher(crypto, store) {
+function GroupCipher(crypto) {
     const self = this;
 
     const ratchet = new GroupRatchet(crypto);
+
+    self.encryptSenderKeyMessage = co.wrap(function*(state, plaintext) {
+        var newState = new SenderKeyState(state);
+        var chain = newState.chain;
+        var version = {
+            current: ProtocolConstants.currentVersion,
+            max: ProtocolConstants.currentVersion
+        };
+
+        var messageKeys = yield ratchet.deriveMessageKeys(chain.key);
+        var ciphertext = yield crypto.encrypt(messageKeys.cipherKey, plaintext, messageKeys.iv);
+
+        var message = {id: newState.id,
+                       iteration: chain.index,
+                       ciphertext: ciphertext};
+        var signatureInput = Messages.encodeSenderKeyMessageSignatureInput({version: version,
+                                                                            message: message});
+
+        var signature = yield crypto.sign(newState.signatureKey.private, signatureInput);
+        var messageBytes = Messages.encodeSenderKeyMessage({version: version,
+                                                            message: message,
+                                                            signature: signature});
+
+        yield ratchet.clickSubRatchet(newState.chain);
+
+        return {
+            body: messageBytes,
+            state: newState
+        };
+    });
 
     self.decryptSenderKeyMessage = co.wrap(function*(session, senderKeyMessageBytes) {
         var senderKeyMessage =
@@ -37,14 +67,20 @@ function GroupCipher(crypto, store) {
             throw new UnsupportedProtocolVersionException("Protocol version " +
                 senderKeyMessage.version.current + " is not supported");
         }
+        var message = senderKeyMessage.message;
+        var signatureInput = senderKeyMessage.signatureInput;
+        var signature = senderKeyMessage.signature;
 
         var newSession = new GroupSession(session);
         var exceptions = [];
         for (var state of newSession.states) {
-            if (state.id === senderKeyMessage.message.id) {
+            if (state.id === message.id) {
                 var clonedSessionState = new SenderKeyState(state);
-                var message = senderKeyMessage.message;
-                var signature = senderKeyMessage.signature;
+                var isValid = yield crypto.verifySignature(state.signatureKey, signatureInput, signature);
+                if (!isValid) {
+                    exceptions.push(new InvalidMessageException("Bad signature"));
+                    continue;
+                }
                 var promise = decryptSenderKeyMessageWithSessionState(clonedSessionState, message, signature);
                 var result = yield promise.catch((e) => {
                     exceptions.push(e);

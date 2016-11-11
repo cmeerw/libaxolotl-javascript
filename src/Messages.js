@@ -41,6 +41,12 @@ var encodeWhisperMessageMacInput = (whisperMessage) => {
     return ArrayBufferUtils.concat(versionByte, messageBytes);
 };
 
+var encodeSenderKeyMessageSignatureInput = (senderKeyMessage) => {
+    var messageBytes = new WhisperProtos.SenderKeyMessage(senderKeyMessage.message).encode().toArrayBuffer();
+    var versionField = getVersionField(senderKeyMessage.version);
+    return ArrayBufferUtils.concat(versionField, messageBytes);
+};
+
 export default {
     decodeWhisperMessage: (whisperMessageBytes) => {
         var messageBytes = whisperMessageBytes.slice(1, -ProtocolConstants.macByteCount);
@@ -83,14 +89,14 @@ export default {
         return {
             version: extractMessageVersion(senderKeyMessageBytes.slice(0, 1)),
             message: message,
+            signatureInput: senderKeyMessageBytes.slice(0, -ProtocolConstants.signatureByteCount),
             signature: senderKeyMessageBytes.slice(-ProtocolConstants.signatureByteCount)
         };
     },
+    encodeSenderKeyMessageSignatureInput: encodeSenderKeyMessageSignatureInput,
     encodeSenderKeyMessage: (senderKeyMessage) => {
-        var message = senderKeyMessage.message;
-        var messageBytes = new WhisperProtos.SenderKeyMessage(message).encode().toArrayBuffer();
-        var versionField = getVersionField(senderKeyMessage.version);
-        return ArrayBufferUtils.concat(versionField, messageBytes);
+        return ArrayBufferUtils.concat(encodeSenderKeyMessageSignatureInput(senderKeyMessage),
+                                       senderKeyMessage.signature);
     },
     decodeSenderKeyDistributionMessage: (senderKeyDistributionMessageBytes) => {
         var message = WhisperProtos.SenderKeyDistributionMessage.decode(senderKeyDistributionMessageBytes.slice(1));

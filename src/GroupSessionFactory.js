@@ -16,6 +16,7 @@
  */
 
 import ArrayBufferUtils from "./ArrayBufferUtils";
+import ProtocolConstants from "./ProtocolConstants";
 import Messages from "./Messages";
 import GroupSession from "./GroupSession";
 import SenderKeyChain from "./SenderKeyChain";
@@ -23,7 +24,7 @@ import SenderKeyState from "./SenderKeyState";
 import UnsupportedProtocolVersionException from "./Exceptions";
 import co from "co";
 
-function GroupSessionFactory(crypto, store) {
+function GroupSessionFactory(crypto) {
     const self = this;
 
     self.processSenderKeyDistributionMessage = (session, senderKeyDistributionMessageBytes) => {
@@ -43,6 +44,40 @@ function GroupSessionFactory(crypto, store) {
 
         return session;
     };
+
+    self.createState = co.wrap(function*() {
+        var keyId = yield generateSenderKeyId();
+        var chainKey = yield generateSenderKey();
+        var signatureKey = yield crypto.generateKeyPair();
+
+        var state = new SenderKeyState({id: keyId,
+                                        chain: new SenderKeyChain(chainKey, 0),
+                                        signatureKey: signatureKey});
+        return state;
+    });
+
+    self.createSenderKeyDistributionMessage = (state) => {
+        var version = {current: ProtocolConstants.currentVersion,
+                       max: ProtocolConstants.currentVersion};
+
+        var message = {id: state.id,
+                       iteration: state.chain.index,
+                       chainKey: state.chain.key,
+                       signingKey: state.signatureKey.public};
+        return Messages.encodeSenderKeyDistributionMessage({version: version,
+                                                            message: message});
+    };
+
+    var generateSenderKeyId = co.wrap(function*() {
+        var bytes = yield crypto.randomBytes(4);
+        var number = new Uint32Array(bytes)[0];
+        return (number & 0x7fffffff);
+    });
+
+    var generateSenderKey = co.wrap(function*() {
+        var bytes = yield crypto.randomBytes(32);
+        return bytes;
+    });
 
     Object.freeze(self);
 }
